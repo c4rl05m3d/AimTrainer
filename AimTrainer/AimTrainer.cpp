@@ -1,6 +1,7 @@
 #define OLC_PGE_APPLICATION
 #include <iostream>
 #include "olcPixelGameEngine.h"
+#include "print.h"
 #include <vector>
 using namespace std;
 using namespace olc;
@@ -74,6 +75,22 @@ struct v2 {
     }
 };
 
+int getindex(vector<v2> list, v2 value) {
+    int x = 0;
+    for (v2 v : list) {
+        if (v.x == value.x and v.y == value.y) { return x; }
+        else { x++; }
+    }
+}
+
+int altgetindex(vector<float> list, float value) {
+    int x = 0;
+    for (float v : list) {
+        if (v == value) { return x; }
+        else { x++; }
+    }
+}
+
 struct button {
     Pixel color;
     Pixel border;
@@ -90,23 +107,6 @@ struct button {
         mouse = m;
     }
 };
-
-struct ball {
-    v2 pos;
-    int frames;
-    ball(v2 p, int f) {
-        pos = p;
-        frames - f;
-    }
-};
-
-int getindex(vector<ball> list, v2 value) {
-    int x = 0;
-    for (ball b : list) {
-        if (b.pos.x == value.x and b.pos.y == value.y) { return x; }
-        else { x++; }
-    }
-}
 
 bool mouseincircle(v2 circlepos, v2 mouse, int diff) {
     
@@ -142,15 +142,18 @@ void drawbuttons(vector<button> butt, PixelGameEngine* engine) {
     }
 }
 
-void drawballs(vector<ball> balls, PixelGameEngine* engine, int diff) {
-    for (ball b : balls) {
-        engine->FillCircle(b.pos.x, b.pos.y, diff - b.frames, RED);
+void drawballs(vector<v2> balls, PixelGameEngine* engine, int diff, vector<float> frames) {
+    int x = 0;
+    for (v2 b : balls) {
+        engine->FillCircle(b.x, b.y, diff - frames[x], RED);
+        x++;
     }
 }
 
 struct aim : PixelGameEngine {
 
     bool OnUserCreate(){
+
         return true;
     }
     bool menu = true;
@@ -161,9 +164,10 @@ struct aim : PixelGameEngine {
         button(GREY, WHITE, "HARD", { 520, 325 }, { 680, 375}, false),
         button(RED, WHITE, "EXIT", {50, 720}, {120, 750}, false)
     };
-    vector<ball>myballs;
+    vector<v2>myballs;
     int score = -1;
     int errors = 0;
+    vector<float> frames = { 0, 0, 0 };
     bool OnUserUpdate(float dt) {
         v2 mousepos = { GetMouseX(), GetMouseY() };
         Clear(BLACK);
@@ -187,43 +191,44 @@ struct aim : PixelGameEngine {
             bool boom = false;
             if (score == -1) {
                 FillCircle(400, 400, diff, RED);
-                DrawString(320, 350, "Click to start", WHITE, 2);
+                DrawString(350, 350, "Click to start", WHITE, 2);
                 if (GetMouse(0).bPressed and mouseincircle({ 400, 400 }, mousepos, diff)) { 
                     score += 1;
                     v2 randpos = { rand() % 770 + 30 , rand() % 770 + 30 };
-                    myballs.push_back(ball(randpos, 0));
+                    myballs.push_back(randpos);
                     randpos = { rand() % 770 + 30 , rand() % 770 + 30 };
-                    myballs.push_back(ball(randpos, 0));
+                    myballs.push_back(randpos);
                     randpos = { rand() % 770 + 30 , rand() % 770 + 30 };
-                    myballs.push_back(ball(randpos, 0));
+                    myballs.push_back(randpos);
                 }
             }
             else {
-                drawballs(myballs, this, diff);
+                drawballs(myballs, this, diff, frames);
                 DrawString(30, 30, "Score: " + to_string(score), WHITE, 2);
                 DrawString(30, 100, "Errors: " + to_string(errors), WHITE, 2);
                 if (GetMouse(0).bPressed) {
-                    for (ball& b : myballs) {
-                        if (mouseincircle(b.pos, mousepos, diff)) {
+                    for (v2 b : myballs) {
+                        if (mouseincircle(b, mousepos, diff)) {
                             boom = true;
-                            score ++;
-                            int i = getindex(myballs, b.pos);
+                            score += 1;
+                            int i = getindex(myballs, b);
                             v2 randpos = { rand() % 770 + 30 , rand() % 770 + 30 };
-                            myballs[i].pos = randpos;
-                            myballs[i].frames = 0;
+                            myballs[i] = randpos;
+                            frames[i] = 0;
                         }
                     }
                     if (boom == false) { errors++; }
                 }
             }
-            for (ball& b : myballs) {
-                b.frames += 0.001;
-                if (diff - b.frames <= 0) {
-                    errors++;
-                    int i = getindex(myballs, b.pos);
+            cout << frames << endl;
+            for (float& n : frames) { 
+                n += 0.01;
+                if (diff - n <= 0) {
+                    errors += 1;
+                    int i = altgetindex(frames, n);
                     v2 randpos = { rand() % 770 + 30 , rand() % 770 + 30 };
-                    myballs[i].pos = randpos;
-                    myballs[i].frames = 0;
+                    myballs[i] = randpos;
+                    frames[i] = 0;
                 }
             }
             if (GetMouse(1).bPressed) { menu = true; }
